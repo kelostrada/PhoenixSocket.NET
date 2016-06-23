@@ -4,6 +4,8 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Web;
+using SuperSocket.ClientEngine;
 using WebSocket4Net;
 
 namespace PhoenixSocket
@@ -46,7 +48,7 @@ namespace PhoenixSocket
         };
 
         #endregion
-
+        
         private List<Channel> _channels = new List<Channel>();
         private List<Action> _sendBuffer = new List<Action>();
         private int _ref;
@@ -54,7 +56,7 @@ namespace PhoenixSocket
         private int _heartbeatIntervalMs;
         private readonly Func<int, int> _reconnectAfterMs = tries => tries > 3 ? 10000 : new[] {1000, 2000, 5000}[tries - 1];
         private readonly Action<string, string, object> _logger = (kind, msg, data) => { };
-        private readonly dynamic _params = new {};
+        private readonly Dictionary<string, string> _params = new Dictionary<string, string>();
         private string _endPoint;
         private Timer _reconnectTimer;
 
@@ -88,49 +90,149 @@ namespace PhoenixSocket
             }, _reconnectAfterMs);
         }
 
+        private string EndPointUrl()
+        {
+            var uriBuilder = new UriBuilder(_endPoint);
+            var query = HttpUtility.ParseQueryString(uriBuilder.Query);
+            foreach (var p in _params) query.Set(p.Key, p.Value);
+            query.Set("vsn", Vsn);
+            uriBuilder.Query = query.ToString();
+            return uriBuilder.ToString();
+            // Note: Removed checking protocol, because this will never get called 
+            // from browser so we don't have javascript's "location" object.
+        }
+
         private WebSocket _conn;
+
+        public void Disconnect(Action callback, int? code = null, string reason = "")
+        {
+            if (_conn != null)
+            {
+                _conn.Closed -= OnConnClose; // noop
+                if (code != null)
+                {
+                    _conn.Close(code.Value, reason);
+                }
+                else
+                {
+                    _conn.Close();
+                }
+                _conn = null;
+            }
+
+            callback?.Invoke();
+        }
 
         public void Connect()
         {
+            // Note: Didn't implement deprecated params
             if (_conn != null) return;
 
-            _conn = new WebSocket("");
-            _conn.Opened += websocket_Opened;
-            _conn.Error += ConnError;
-            _conn.Closed += ConnClosed;
-            _conn.MessageReceived += ConnMessageReceived;
+            _conn = new WebSocket(EndPointUrl());
+            _conn.Opened += OnConnOpen;
+            _conn.Error += OnConnError;
+            _conn.MessageReceived += OnConnMessage;
+            _conn.Closed += OnConnClose;
             _conn.Open();
             
+            /*
             while (true)
             {
                 Thread.Sleep(5000);
                 _conn.Send("{ \"topic\":\"phoenix\",\"event\":\"heartbeat\",\"payload\":{ },\"ref\":\"" + _ref++ + "\"}");
             }
+            */
         }
 
-        public void Disconnect(Action callback)
+        private void Log(string kind, string msg, object data)
+        {
+            _logger(kind, msg, data);
+        }
+        
+        #region Event Handlers
+
+        public event EventHandler Opened;
+        public event EventHandler Closed;
+        public event EventHandler<ErrorEventArgs> Error;
+        public event EventHandler<MessageReceivedEventArgs> Message;
+
+        #endregion
+
+        private void OnConnOpen(object sender, EventArgs eventArgs)
+        {
+            Log("transport", $"connected to {EndPointUrl()}", Transports[Transport.Websocket]);
+            //FlushSendBuffer();
+        }
+
+        private void OnConnClose(object sender, EventArgs eventArgs)
         {
             
         }
 
-        private void ConnMessageReceived(object sender, MessageReceivedEventArgs e)
+        private void OnConnError(object sender, ErrorEventArgs errorEventArgs)
         {
-            Console.WriteLine("Received: " + e.Message);
+            
         }
 
-        private void ConnError(object sender, SuperSocket.ClientEngine.ErrorEventArgs e)
+        private void TriggerChanError()
         {
-            Console.WriteLine("Error " + e.Exception.Message);
+            _channels.ForEach(channel => channel.Trigger(ChannelEvent.Error));
         }
 
-        private void ConnClosed(object sender, EventArgs e)
+        public string ConnectionState()
         {
-            Console.WriteLine("Closed");
+            if (_conn == null) return "closed";
+            return _conn.State.ToString().ToLower();
         }
 
-        private void websocket_Opened(object sender, EventArgs e)
+        public bool IsConnected()
         {
-            _conn.Send("{\"topic\":\"quotes:EURUSD\",\"event\":\"phx_join\",\"payload\":{},\"ref\":\"" + _ref++ + "\"}");            
+            return ConnectionState() == "open";
         }
+
+        public void Remove(Channel channel)
+        {
+            _channels.Remove(channel); 
+            // TODO: easier way to do this by reference, although not exactly the same as JS Client
+        }
+
+        public Channel Channel(string topic, IPayload chanParams)
+        {
+            chanParams = chanParams ?? EmptyPayload.Instance;
+            var chan = new Channel(topic, chanParams, this);
+            _channels.Add(chan);
+            return chan;
+        }
+
+        public void Push(PushData data)
+        {
+            Action callback = () => _conn.Send(data.Serialize());
+            Log("push", $"{data.Topic} {data.Event} ({data.Ref})", data.Payload);
+            if (IsConnected())
+            {
+                callback();
+            }
+            else
+            {
+                _sendBuffer.Add(callback);
+            }
+        }
+        /*
+        public string MakeRef()
+        {
+            var newRef = _ref + 1;
+            if (newRef == _ref) { }
+        }
+
+        private void FlushSendBuffer()
+        {
+            if ()
+        }
+        */
+        private void OnConnMessage(object sender, MessageReceivedEventArgs messageReceivedEventArgs)
+        {
+            
+        }
+        
     }
 }
