@@ -13,26 +13,27 @@ To test it out you need some simple `Phoenix Framework` project with configured 
 ### Example Usage:
 
 ``` C#
-    var host = "ws://localhost:4000/socket";
-    var socket = new PhoenixSocket.Socket(host,
-        logger: (kind, msg, data) => Console.WriteLine($"{kind}: {msg}, \n" + JsonConvert.SerializeObject(data)));
+var host = "ws://localhost:4000/socket";
+var socket = new PhoenixSocket.Socket(host,
+    logger: (kind, msg, data) => Console.WriteLine($"{kind}: {msg}, \n" + JsonConvert.SerializeObject(data)));
 
-    socket.Connect();
-    
-    var channel = socket.Channel("rooms:lobby");
-    channel.On("new_msg", msg =>
-    {
-        Console.WriteLine("New message: " + JsonConvert.SerializeObject(msg));
-    });
-    channel.Join();
+socket.Connect();
 
-    var message = "";
+var channel = socket.Channel("rooms:lobby");
+channel.On("new_msg", msg =>
+{
+    Console.WriteLine("New message: " + JsonConvert.SerializeObject(msg));
+});
+channel.Join();
 
-    while (message?.Trim() != "q")
-    {
-        message = Console.ReadLine();
-        channel.Push("new_msg", new { body = message });
-    }
+var message = "";
 
-    channel.Leave();
-    socket.Disconnect(null);
+while (message?.Trim() != "q")
+{
+    message = Console.ReadLine();
+    channel.Push("new_msg", new { body = message });
+}
+
+channel.Leave();
+socket.Disconnect(null);
+```
