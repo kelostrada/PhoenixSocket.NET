@@ -1,9 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Web;
 using SuperSocket.ClientEngine;
 using WebSocket4Net;
@@ -49,16 +45,16 @@ namespace PhoenixSocket
 
         #endregion
         
-        private List<Channel> _channels = new List<Channel>();
-        private List<Action> _sendBuffer = new List<Action>();
+        private readonly List<Channel> _channels = new List<Channel>();
+        private readonly List<Action> _sendBuffer = new List<Action>();
         private int _ref;
-        private int _timeout;
-        private int _heartbeatIntervalMs;
+        public int Timeout { get; private set; }
+        private readonly int _heartbeatIntervalMs;
         private readonly Func<int, int> _reconnectAfterMs = tries => tries > 3 ? 10000 : new[] {1000, 2000, 5000}[tries - 1];
         private readonly Action<string, string, object> _logger = (kind, msg, data) => { };
         private readonly Dictionary<string, string> _params = new Dictionary<string, string>();
-        private string _endPoint;
-        private Timer _reconnectTimer;
+        private readonly string _endPoint;
+        private readonly Timer _reconnectTimer;
         private System.Timers.Timer _heartbeatTimer;
 
         /// <summary>
@@ -79,7 +75,7 @@ namespace PhoenixSocket
             Func<int, int> reconnectAfterMs = null, Action<string, string, object> logger = null,
             dynamic urlparams = null)
         {
-            _timeout = timeout;
+            Timeout = timeout;
             _heartbeatIntervalMs = heartbeatIntervalMs;
             _reconnectAfterMs = reconnectAfterMs ?? _reconnectAfterMs;
             _logger = logger ?? _logger;
@@ -220,7 +216,6 @@ namespace PhoenixSocket
 
         public void Push(PushData data)
         {
-            var msg = data.Serialize();
             Action callback = () => _conn.Send(data.Serialize());
             Log("push", $"{data.Topic} {data.Event} ({data.Ref})", data.Payload);
             if (IsConnected())
