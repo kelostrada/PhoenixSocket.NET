@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace PhoenixSocket
 {
-    public class EmptyPayload : IPayload
+    public class EmptyPayload
     {
         public static readonly EmptyPayload Instance = new EmptyPayload();
     }

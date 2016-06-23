@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -8,20 +9,30 @@ namespace PhoenixSocket
 {
     public class Channel
     {
-        private IPayload chanParams;
+        private dynamic chanParams;
         private Socket socket;
         private string topic;
 
-        public Channel(string topic, IPayload chanParams, Socket socket)
+        public Channel(string topic, dynamic chanParams, Socket socket)
         {
             this.topic = topic;
             this.chanParams = chanParams;
             this.socket = socket;
         }
 
-        public void Trigger(ChannelEvent error)
+        public bool IsMember(string topic)
         {
-            throw new NotImplementedException();
+            return true;
+        }
+
+        public void Trigger(string @event)
+        {
+            Trace.WriteLine($"Trigger channel event {@event}");
+        }
+        
+        internal void Trigger(string @event, dynamic payload, string @ref)
+        {
+            Trigger(@event);
         }
     }
 }

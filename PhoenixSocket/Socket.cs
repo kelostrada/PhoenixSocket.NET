@@ -59,6 +59,7 @@ namespace PhoenixSocket
         private readonly Dictionary<string, string> _params = new Dictionary<string, string>();
         private string _endPoint;
         private Timer _reconnectTimer;
+        private System.Timers.Timer _heartbeatTimer;
 
         /// <summary>
         /// Initializes the Socket
@@ -161,22 +162,35 @@ namespace PhoenixSocket
         private void OnConnOpen(object sender, EventArgs eventArgs)
         {
             Log("transport", $"connected to {EndPointUrl()}", Transports[Transport.Websocket]);
-            //FlushSendBuffer();
+            FlushSendBuffer();
+            _reconnectTimer.Reset();
+            // Note: WebSocket4Net doesn't implement skipHeartbeat so we will send heartbeats always
+            _heartbeatTimer?.Stop();
+            _heartbeatTimer = new System.Timers.Timer(_heartbeatIntervalMs) { AutoReset = true };
+            _heartbeatTimer.Elapsed += (s, a) => SendHeartbeat();
+            _heartbeatTimer.Start();
+            Opened?.Invoke(sender, eventArgs);
         }
 
         private void OnConnClose(object sender, EventArgs eventArgs)
         {
-            
+            Log("transport", "close", eventArgs);
+            TriggerChanError();
+            _heartbeatTimer?.Stop();
+            _reconnectTimer.ScheduleTimeout();
+            Closed?.Invoke(sender, eventArgs);
         }
 
         private void OnConnError(object sender, ErrorEventArgs errorEventArgs)
         {
-            
+            Log("transport", "error", errorEventArgs);
+            TriggerChanError();
+            Error?.Invoke(sender, errorEventArgs);
         }
 
         private void TriggerChanError()
         {
-            _channels.ForEach(channel => channel.Trigger(ChannelEvent.Error));
+            _channels.ForEach(channel => channel.Trigger(ChannelEvents[ChannelEvent.Error]));
         }
 
         public string ConnectionState()
@@ -196,7 +210,7 @@ namespace PhoenixSocket
             // TODO: easier way to do this by reference, although not exactly the same as JS Client
         }
 
-        public Channel Channel(string topic, IPayload chanParams)
+        public Channel Channel(string topic, dynamic chanParams)
         {
             chanParams = chanParams ?? EmptyPayload.Instance;
             var chan = new Channel(topic, chanParams, this);
@@ -206,6 +220,7 @@ namespace PhoenixSocket
 
         public void Push(PushData data)
         {
+            var msg = data.Serialize();
             Action callback = () => _conn.Send(data.Serialize());
             Log("push", $"{data.Topic} {data.Event} ({data.Ref})", data.Payload);
             if (IsConnected())
@@ -247,7 +262,15 @@ namespace PhoenixSocket
         
         private void OnConnMessage(object sender, MessageReceivedEventArgs messageReceivedEventArgs)
         {
+            var data = PushData.Deserialize(messageReceivedEventArgs.Message);
+            data.Ref = data.Ref ?? "";
             
+            Log("receive", $"{data.Topic} {data.Event} " + (string.IsNullOrEmpty(data.Ref) ? "" : $"({data.Ref})"), data.Payload);
+            // Note: Removed Status from Log as Payload is dynamic and it's not very efficient to check if dynamic object has any
+            // given key. However if the status is there it's still available through the "data" object in Log function.
+            _channels.FindAll(channel => channel.IsMember(data.Topic))
+                     .ForEach(channel => channel.Trigger(data.Event, data.Payload, data.Ref));
+            Message?.Invoke(sender, messageReceivedEventArgs);
         }
         
     }
