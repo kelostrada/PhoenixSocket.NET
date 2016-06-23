@@ -1,38 +1,50 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 
 namespace ConsoleApplication
 {
-    class Program
+    internal class Program
     {
-        static void Main(string[] args)
+        static void Main()
         {
-
-            //var host = "ws://localhost:4000/socket/websocket?vsn=1.0.0";
-            var host = "wss://calm-peak-50914.herokuapp.com/socket";
+            var host = "ws://localhost:4000/socket";
             var socket = new PhoenixSocket.Socket(host,
                 logger: (kind, msg, data) => Console.WriteLine($"{kind}: {msg}, \n" + JsonConvert.SerializeObject(data)));
 
             Task.Run(() => socket.Connect());
 
-            var channel = socket.Channel("quotes:EURUSD");
-            channel.On("receive", quote =>
+            var channel = socket.Channel("rooms:lobby");
+            channel.On("new_msg", msg =>
             {
-                Console.WriteLine("QUOTE: " + JsonConvert.SerializeObject(quote));
+                Console.WriteLine("New message: " + JsonConvert.SerializeObject(msg));
             });
             channel.Join();
 
-            Thread.Sleep(5000);
+            Thread.Sleep(1000);
 
             channel.Leave();
+            
+            Thread.Sleep(1000);
+            
+            channel = socket.Channel("rooms:lobby");
+            channel.On("new_msg", msg =>
+            {
+                Console.WriteLine("New message: " +  msg.body);
+            });
+            channel.Join();
 
-            Console.ReadKey();
+            var message = "";
+
+            while (message?.Trim() != "q")
+            {
+                message = Console.ReadLine();
+                channel.Push("new_msg", new { body = message });
+            }
+
+            channel.Leave();
+            socket.Disconnect(null);
         }
     }
 }

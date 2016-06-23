@@ -2,7 +2,6 @@
 
 namespace PhoenixSocket
 {
-
     /// <summary>
     /// Creates a timer that accepts a `timerCalc` function to perform
     /// calculated timeout retries, such as exponential backoff.

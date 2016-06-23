@@ -2,7 +2,6 @@
 
 namespace PhoenixSocket
 {
-
     public class PushData
     {
         [JsonProperty("topic")]

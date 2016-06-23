@@ -23,7 +23,6 @@ namespace PhoenixSocket.Tests
             timer.ScheduleTimeout();
             Thread.Sleep(1100);
             Trace.WriteLine("Slept 1100");
-
         }
     }
 }

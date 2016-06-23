@@ -250,6 +250,5 @@ namespace PhoenixSocket
                      .ForEach(channel => channel.Trigger(data.Event, data.Payload, data.Ref));
             Message?.Invoke(sender, messageReceivedEventArgs);
         }
-        
     }
 }

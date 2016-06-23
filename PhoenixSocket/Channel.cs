@@ -1,9 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace PhoenixSocket
 {
@@ -32,20 +28,19 @@ namespace PhoenixSocket
         #endregion
 
         private ChannelState _state = ChannelState.Closed;
-        public string Topic { get; private set; }
-        private dynamic _params;
-        public Socket Socket { get; private set; }
-        private List<Binding> _bindings = new List<Binding>();
-        private int _timeout;
-        private bool _joinedOnce = false;
-        private Push _joinPush;
-        private List<Push> _pushBuffer = new List<Push>();
-        private Timer _rejoinTimer;
+        public string Topic { get; }
+        public Socket Socket { get; }
+        private readonly List<Binding> _bindings = new List<Binding>();
+        private readonly int _timeout;
+        private bool _joinedOnce;
+        private readonly Push _joinPush;
+        private readonly List<Push> _pushBuffer = new List<Push>();
+        private readonly Timer _rejoinTimer;
 
         public Channel(string topic, dynamic @params, Socket socket)
         {
             Topic = topic;
-            _params = @params ?? new {};
+            @params = @params ?? new {};
             Socket = socket;
             _timeout = Socket.Timeout;
             _joinPush = new Push(this, ChannelEvents[ChannelEvent.Join], @params, _timeout);
@@ -110,7 +105,7 @@ namespace PhoenixSocket
 
         private void OnClose(Action callback)
         {
-            On(ChannelEvents[ChannelEvent.Close], (p, r) => callback());
+            On(ChannelEvents[ChannelEvent.Close], callback);
         }
 
         private void OnError(Action<string> callback)
@@ -271,27 +266,27 @@ namespace PhoenixSocket
             return $"chan_reply_{@ref}";
         }
 
-        private bool IsClosed()
+        public bool IsClosed()
         {
             return _state == ChannelState.Closed;
         }
 
-        private bool IsErrored()
+        public bool IsErrored()
         {
             return _state == ChannelState.Errored;
         }
 
-        private bool IsJoined()
+        public bool IsJoined()
         {
             return _state == ChannelState.Joined;
         }
-        
-        private bool IsJoining()
+
+        public bool IsJoining()
         {
             return _state == ChannelState.Joining;
         }
-        
-        private bool IsLeaving()
+
+        public bool IsLeaving()
         {
             return _state == ChannelState.Leaving;
         }
