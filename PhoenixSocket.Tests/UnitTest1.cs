@@ -8,15 +8,8 @@ namespace PhoenixSocket.Tests
     public class UnitTest1
     {
         [TestMethod]
-        public async Task TestMethod1()
+        public void TestMethod1()
         {
-            // wss://calm-peak-50914.herokuapp.com/socket/websocket?token=&vsn=1.0.0
-            var host = "wss://calm-peak-50914.herokuapp.com/socket/websocket";
-
-            var socket = new Socket(host);
-            await socket.Connect();
-
-
         }
     }
 }

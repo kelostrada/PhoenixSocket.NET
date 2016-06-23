@@ -1,82 +1,102 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
-using System.Net.WebSockets;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
+using WebSocket4Net;
 
 namespace PhoenixSocket
 {
+    /// <summary>
+    /// WebSocket connection to Phoenix Framework Channels 
+    /// 
+    /// Based on commit: dffe05346e1b8b159dfdde418774dba5fed82a3f
+    /// In https://github.com/phoenixframework/phoenix/blob/master/web/static/js/phoenix.js
+    /// </summary>
     public class Socket
     {
-        private string _host;
-        private ClientWebSocket _transport;
-        private UTF8Encoding encoding = new UTF8Encoding();
+        #region Constants
 
-        public Socket(string host)
+        public const string Vsn = "1.0.0";
+        public const int DefaultTimeout = 10000;
+
+        public static Dictionary<ChannelState, string> ChannelStates = new Dictionary<ChannelState, string>
         {
-            _host = host;
+            {ChannelState.Closed, "closed"},
+            {ChannelState.Errored, "errored" },
+            {ChannelState.Joined, "joined" },
+            {ChannelState.Joining, "joining" },
+            {ChannelState.Leaving, "leaving" },
+        };
+
+        public static Dictionary<ChannelEvent, string> ChannelEvents = new Dictionary<ChannelEvent, string>
+        {
+            {ChannelEvent.Close, "phx_close" },
+            {ChannelEvent.Error, "phx_error" },
+            {ChannelEvent.Join, "phx_join" },
+            {ChannelEvent.Reply, "phx_reply" },
+            {ChannelEvent.Leave, "phx_leave" },
+        };
+
+        public static Dictionary<Transport, string> Transports = new Dictionary<Transport, string>
+        {
+            {Transport.Longpoll, "longpoll" },
+            {Transport.Websocket, "websocket" }
+        };
+
+        #endregion
+
+        private List<Channel> _channels = new List<Channel>();
+        private List<Action> _sendBuffer = new List<Action>();
+        private int _ref;
+        private int _timeout = DefaultTimeout;
+        private int _heartbeatIntervalMs = 30000;
+        private Func<int, int> _reconnectAfterMs = tries => tries > 3 ? 10000 : new[] {1000, 2000, 5000}[tries - 1];
+        private Action<string, string, object> _logger = (kind, msg, data) => { };
+        private dynamic _params = new {};
+        private string _endPoint;
+
+
+        public Socket(string endPoint)
+        {
         }
+
+        private WebSocket _conn;
 
         public async Task Connect()
         {
-            Thread.Sleep(1000); //wait for a sec, so server starts and ready to accept connection..
+            _conn = new WebSocket("");
+            _conn.Opened += websocket_Opened;
+            _conn.Error += ConnError;
+            _conn.Closed += ConnClosed;
+            _conn.MessageReceived += ConnMessageReceived;
+            _conn.Open();
             
-            try
+            while (true)
             {
-                _transport = new ClientWebSocket();
-                await _transport.ConnectAsync(new Uri(_host + "?vsn=1.0.0"), CancellationToken.None);
-
-                //await Task.WhenAll(Receive(webSocket), Send(webSocket));
-
-                Thread.Sleep(1000);
-
-                await Send();
-
-                while (true)
-                {
-                    await Receive();
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Exception: {0}", ex);
-            }
-            finally
-            {
-                if (_transport != null)
-                    _transport.Dispose();
-                Console.WriteLine();
-                Console.WriteLine("WebSocket closed.");
+                await Task.Delay(5000);
+                _conn.Send("{ \"topic\":\"phoenix\",\"event\":\"heartbeat\",\"payload\":{ },\"ref\":\"" + _ref++ + "\"}");
             }
         }
 
-        private async Task Send()
+        private void ConnMessageReceived(object sender, MessageReceivedEventArgs e)
         {
-            if (_transport.State == WebSocketState.Open)
-            {
-                byte[] buffer = encoding.GetBytes("{\"topic\":\"quotes: BTCCNY\",\"event\":\"phx_join\",\"payload\":{},\"ref\":\"1\"}");
-                await _transport.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Text, false, CancellationToken.None);
-            }
+            Console.WriteLine("Received: " + e.Message);
         }
 
-        private async Task Receive()
+        private void ConnError(object sender, SuperSocket.ClientEngine.ErrorEventArgs e)
         {
-            byte[] buffer = new byte[1024];
-            while (_transport.State == WebSocketState.Open)
-            {
-                var result = await _transport.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
-                if (result.MessageType == WebSocketMessageType.Close)
-                {
-                    await _transport.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, CancellationToken.None);
-                }
-                else
-                {
-                    Console.WriteLine("Receive:  " + Encoding.UTF8.GetString(buffer).TrimEnd('\0'));
-                }
-            }
+            Console.WriteLine("Error " + e.Exception.Message);
+        }
+
+        private void ConnClosed(object sender, EventArgs e)
+        {
+            Console.WriteLine("Closed");
+        }
+
+        private void websocket_Opened(object sender, EventArgs e)
+        {
+            _conn.Send("{\"topic\":\"quotes:EURUSD\",\"event\":\"phx_join\",\"payload\":{},\"ref\":\"" + _ref++ + "\"}");            
         }
     }
 }
