@@ -84,6 +84,7 @@ namespace PhoenixSocket
 
         private void MatchReceive(dynamic payload)
         {
+            // ReSharper disable RedundantAssignment
             string status = null;
             dynamic response = null;
 
@@ -146,10 +147,7 @@ namespace PhoenixSocket
 
         public void Trigger(string status, dynamic response)
         {
-            _channel.Trigger(_refEvent, status, response);
+            _channel.Trigger(_refEvent, new { status, response });
         }
-
-        
-        
     }
 }
