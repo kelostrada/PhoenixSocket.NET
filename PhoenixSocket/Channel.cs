@@ -10,14 +10,16 @@ namespace PhoenixSocket
     public class Channel
     {
         private dynamic chanParams;
-        private Socket socket;
-        private string topic;
+        public Socket Socket { get; private set; }
+        public string Topic { get; private set; }
+
+        private int _timeout;
 
         public Channel(string topic, dynamic chanParams, Socket socket)
         {
-            this.topic = topic;
+            this.Topic = topic;
             this.chanParams = chanParams;
-            this.socket = socket;
+            this.Socket = socket;
         }
 
         public bool IsMember(string topic)
@@ -33,6 +35,27 @@ namespace PhoenixSocket
         internal void Trigger(string @event, dynamic payload, string @ref)
         {
             Trigger(@event);
+        }
+
+        public void Join(int timeout = 0)
+        {
+            if (timeout == 0) timeout = _timeout;
+
+        }
+
+        public void Off(string refEvent)
+        {
+            throw new NotImplementedException();
+        }
+
+        public string ReplyEventName(string @ref)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void On(string refEvent, Action<dynamic> action)
+        {
+            throw new NotImplementedException();
         }
     }
 }

@@ -17,7 +17,11 @@ namespace ConsoleApplication
             var host = "wss://calm-peak-50914.herokuapp.com/socket";
             var socket = new PhoenixSocket.Socket(host, heartbeatIntervalMs: 5000,
                 logger: (kind, msg, data) => Console.WriteLine($"{kind}: {msg}, \n" + JsonConvert.SerializeObject(data)));
+
             Task.Run(() => socket.Connect());
+
+            var channel = socket.Channel("quotes:EURUSD");
+            channel.Join();
 
             Console.ReadKey();
         }

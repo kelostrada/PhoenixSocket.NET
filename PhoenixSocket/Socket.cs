@@ -206,7 +206,7 @@ namespace PhoenixSocket
             // TODO: easier way to do this by reference, although not exactly the same as JS Client
         }
 
-        public Channel Channel(string topic, dynamic chanParams)
+        public Channel Channel(string topic, dynamic chanParams = null)
         {
             chanParams = chanParams ?? EmptyPayload.Instance;
             var chan = new Channel(topic, chanParams, this);
