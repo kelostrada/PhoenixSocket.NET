@@ -6,9 +6,9 @@ using System.Runtime.InteropServices;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 [assembly: AssemblyTitle("PhoenixSocket")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyDescription("Phoenix Framework WebSocket Client for .NET")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
+[assembly: AssemblyCompany("kelostrada")]
 [assembly: AssemblyProduct("PhoenixSocket")]
 [assembly: AssemblyCopyright("Copyright ©  2016")]
 [assembly: AssemblyTrademark("")]

@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<package >
+  <metadata>
+    <id>$id$</id>
+    <version>$version$</version>
+    <title>$title$</title>
+    <authors>$author$</authors>
+    <owners>$author$</owners>
+    <projectUrl>https://github.com/kelostrada/PhoenixSocket.NET</projectUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>$description$</description>
+    <releaseNotes>Ported functionality from PhoenixFramework Socket.js</releaseNotes>
+    <copyright>Copyright 2016</copyright>
+    <tags>Phoenix PhoenixFramework socket websocket</tags>
+  </metadata>
+</package>
