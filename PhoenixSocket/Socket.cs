@@ -217,18 +217,34 @@ namespace PhoenixSocket
                 _sendBuffer.Add(callback);
             }
         }
-        /*
+        
         public string MakeRef()
         {
             var newRef = _ref + 1;
-            if (newRef == _ref) { }
+            _ref = newRef == _ref ? 0 : newRef;
+            return _ref.ToString();
+        }
+
+        public void SendHeartbeat()
+        {
+            if (!IsConnected()) return;
+            Push(new PushData
+            {
+                Topic = "phoenix",
+                Event = "heartbeat",
+                Ref = MakeRef()
+            });
         }
 
         private void FlushSendBuffer()
         {
-            if ()
+            if (IsConnected() && _sendBuffer.Count > 0)
+            {
+                _sendBuffer.ForEach(callback => callback());
+                _sendBuffer.Clear();
+            }
         }
-        */
+        
         private void OnConnMessage(object sender, MessageReceivedEventArgs messageReceivedEventArgs)
         {
             

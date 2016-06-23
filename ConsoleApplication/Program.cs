@@ -10,6 +10,7 @@ namespace ConsoleApplication
     {
         static void Main(string[] args)
         {
+
             //var host = "ws://localhost:4000/socket/websocket?vsn=1.0.0";
             var host = "wss://calm-peak-50914.herokuapp.com/socket/websocket?token=&vsn=1.0.0";
             var socket = new PhoenixSocket.Socket(host);

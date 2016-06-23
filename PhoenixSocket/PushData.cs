@@ -7,7 +7,7 @@ namespace PhoenixSocket
         public string Topic { get; set; } = "";
         public string Event { get; set; } = "";
         public IPayload Payload { get; set; } = EmptyPayload.Instance;
-        public int? Ref { get; set; } = null;
+        public string Ref { get; set; } = null;
 
         public string Serialize()
         {
