@@ -4,17 +4,17 @@ using Microsoft.CSharp.RuntimeBinder;
 
 namespace PhoenixSocket
 {
-    internal class Push
+    public class Push
     {
         private readonly Channel _channel;
         private readonly string _event;
         private readonly dynamic _payload;
         private dynamic _receivedResp;
-        private int _timeout;
+        public int Timeout { get; private set; }
         private Timer _timeoutTimer;
         private readonly List<Hook> _recHooks;
         public bool Sent { get; private set; }
-        private string _ref;
+        public string Ref { get; private set; }
         private string _refEvent;
 
         /// <summary>
@@ -30,7 +30,7 @@ namespace PhoenixSocket
             _event = @event;
             _payload = payload;
             _receivedResp = null;
-            _timeout = timeout;
+            Timeout = timeout;
             _timeoutTimer = null;
             _recHooks = new List<Hook>();
             Sent = false;
@@ -38,9 +38,9 @@ namespace PhoenixSocket
 
         public void Resend(int timeout)
         {
-            _timeout = timeout;
+            Timeout = timeout;
             CancelRefEvent();
-            _ref = null;
+            Ref = null;
             _refEvent = null;
             _receivedResp = null;
             Sent = false;
@@ -56,7 +56,7 @@ namespace PhoenixSocket
                 Topic = _channel.Topic,
                 Event = _event,
                 Payload = _payload,
-                Ref = _ref
+                Ref = Ref
             });
         }
 
@@ -84,8 +84,8 @@ namespace PhoenixSocket
 
         private void MatchReceive(dynamic payload)
         {
-            dynamic status;
-            dynamic response;
+            string status = null;
+            dynamic response = null;
 
             try
             {
@@ -114,13 +114,13 @@ namespace PhoenixSocket
             _timeoutTimer = null;
         }
 
-        private void StartTimeout()
+        public void StartTimeout()
         {
             if (_timeoutTimer != null) return;
-            _ref = _channel.Socket.MakeRef();
-            _refEvent = _channel.ReplyEventName(_ref);
+            Ref = _channel.Socket.MakeRef();
+            _refEvent = _channel.ReplyEventName(Ref);
 
-            _channel.On(_refEvent, payload =>
+            _channel.On(_refEvent, (payload, _) =>
             {
                 CancelRefEvent();
                 CancelTimeout();
@@ -128,7 +128,7 @@ namespace PhoenixSocket
                 MatchReceive(payload);
             });
 
-            _timeoutTimer = new Timer(() => Trigger("timeout", new {}), _ => _timeout);
+            _timeoutTimer = new Timer(() => Trigger("timeout", new {}), _ => Timeout);
             _timeoutTimer.ScheduleTimeout();
         }
 
@@ -144,7 +144,7 @@ namespace PhoenixSocket
             }
         }
 
-        private void Trigger(string status, dynamic response)
+        public void Trigger(string status, dynamic response)
         {
             _channel.Trigger(_refEvent, status, response);
         }

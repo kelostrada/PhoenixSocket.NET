@@ -10,7 +10,7 @@ namespace PhoenixSocket
         [JsonProperty("event")]
         public string Event { get; set; } = "";
         [JsonProperty("payload")]
-        public dynamic Payload { get; set; } = EmptyPayload.Instance;
+        public dynamic Payload { get; set; }
         [JsonProperty("ref")]
         public string Ref { get; set; } = null;
         

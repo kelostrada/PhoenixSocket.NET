@@ -18,25 +18,7 @@ namespace PhoenixSocket
 
         public const string Vsn = "1.0.0";
         public const int DefaultTimeout = 10000;
-
-        public static Dictionary<ChannelState, string> ChannelStates = new Dictionary<ChannelState, string>
-        {
-            {ChannelState.Closed, "closed"},
-            {ChannelState.Errored, "errored" },
-            {ChannelState.Joined, "joined" },
-            {ChannelState.Joining, "joining" },
-            {ChannelState.Leaving, "leaving" },
-        };
-
-        public static Dictionary<ChannelEvent, string> ChannelEvents = new Dictionary<ChannelEvent, string>
-        {
-            {ChannelEvent.Close, "phx_close" },
-            {ChannelEvent.Error, "phx_error" },
-            {ChannelEvent.Join, "phx_join" },
-            {ChannelEvent.Reply, "phx_reply" },
-            {ChannelEvent.Leave, "phx_leave" },
-        };
-
+        
         public static Dictionary<Transport, string> Transports = new Dictionary<Transport, string>
         {
             {Transport.Longpoll, "longpoll" },
@@ -50,7 +32,7 @@ namespace PhoenixSocket
         private int _ref;
         public int Timeout { get; private set; }
         private readonly int _heartbeatIntervalMs;
-        private readonly Func<int, int> _reconnectAfterMs = tries => tries > 3 ? 10000 : new[] {1000, 2000, 5000}[tries - 1];
+        public readonly Func<int, int> ReconnectAfterMs = tries => tries > 3 ? 10000 : new[] {1000, 2000, 5000}[tries - 1];
         private readonly Action<string, string, object> _logger = (kind, msg, data) => { };
         private readonly Dictionary<string, string> _params = new Dictionary<string, string>();
         private readonly string _endPoint;
@@ -77,14 +59,14 @@ namespace PhoenixSocket
         {
             Timeout = timeout;
             _heartbeatIntervalMs = heartbeatIntervalMs;
-            _reconnectAfterMs = reconnectAfterMs ?? _reconnectAfterMs;
+            ReconnectAfterMs = reconnectAfterMs ?? ReconnectAfterMs;
             _logger = logger ?? _logger;
             _params = urlparams ?? _params;
             _endPoint = $"{endPoint}/{Transports[Transport.Websocket]}";
             _reconnectTimer = new Timer(() =>
             {
                 Disconnect(Connect);
-            }, _reconnectAfterMs);
+            }, ReconnectAfterMs);
         }
 
         private string EndPointUrl()
@@ -141,7 +123,7 @@ namespace PhoenixSocket
             */
         }
 
-        private void Log(string kind, string msg, object data)
+        public void Log(string kind, string msg, object data = null)
         {
             _logger(kind, msg, data);
         }
@@ -186,7 +168,7 @@ namespace PhoenixSocket
 
         private void TriggerChanError()
         {
-            _channels.ForEach(channel => channel.Trigger(ChannelEvents[ChannelEvent.Error]));
+            _channels.ForEach(channel => channel.Trigger(PhoenixSocket.Channel.ChannelEvents[ChannelEvent.Error]));
         }
 
         public string ConnectionState()
@@ -242,7 +224,8 @@ namespace PhoenixSocket
             {
                 Topic = "phoenix",
                 Event = "heartbeat",
-                Ref = MakeRef()
+                Ref = MakeRef(),
+                Payload = EmptyPayload.Instance
             });
         }
 
