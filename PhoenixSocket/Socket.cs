@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using WebSocket4Net;
 
@@ -49,22 +50,50 @@ namespace PhoenixSocket
         private List<Channel> _channels = new List<Channel>();
         private List<Action> _sendBuffer = new List<Action>();
         private int _ref;
-        private int _timeout = DefaultTimeout;
-        private int _heartbeatIntervalMs = 30000;
-        private Func<int, int> _reconnectAfterMs = tries => tries > 3 ? 10000 : new[] {1000, 2000, 5000}[tries - 1];
-        private Action<string, string, object> _logger = (kind, msg, data) => { };
-        private dynamic _params = new {};
+        private int _timeout;
+        private int _heartbeatIntervalMs;
+        private readonly Func<int, int> _reconnectAfterMs = tries => tries > 3 ? 10000 : new[] {1000, 2000, 5000}[tries - 1];
+        private readonly Action<string, string, object> _logger = (kind, msg, data) => { };
+        private readonly dynamic _params = new {};
         private string _endPoint;
+        private Timer _reconnectTimer;
 
-
-        public Socket(string endPoint)
+        /// <summary>
+        /// Initializes the Socket
+        /// </summary>
+        /// <param name="endPoint">The string WebSocket endpoint, ie,
+        /// "ws://example.com/ws", "wss://example.com", "/ws" (inherited host & protocol)</param>
+        /// <param name="timeout">The default timeout in milliseconds to trigger push timeouts. Defaults `DefaultTimeout`</param>
+        /// <param name="heartbeatIntervalMs">The millisec interval to send a heartbeat message</param>
+        /// <param name="reconnectAfterMs">The optional function that returns the millsec reconnect interval.
+        /// Defaults to stepped backoff of:
+        /// tries =&gt; tries &gt; 3 ? 10000 : new[] {1000, 2000, 5000}[tries - 1];
+        /// </param>
+        /// <param name="logger">The optional function for specialized logging, ie:
+        /// (kind, msg, data) =&gt; { Trace.WriteLine($"{kind}: {msg}, {data}"); }</param>
+        /// <param name="urlparams">The optional params to pass when connecting</param>
+        public Socket(string endPoint, int timeout = DefaultTimeout, int heartbeatIntervalMs = 30000, 
+            Func<int, int> reconnectAfterMs = null, Action<string, string, object> logger = null,
+            dynamic urlparams = null)
         {
+            _timeout = timeout;
+            _heartbeatIntervalMs = heartbeatIntervalMs;
+            _reconnectAfterMs = reconnectAfterMs ?? _reconnectAfterMs;
+            _logger = logger ?? _logger;
+            _params = urlparams ?? _params;
+            _endPoint = $"{endPoint}/{Transports[Transport.Websocket]}";
+            _reconnectTimer = new Timer(() =>
+            {
+                Disconnect(Connect);
+            }, _reconnectAfterMs);
         }
 
         private WebSocket _conn;
 
-        public async Task Connect()
+        public void Connect()
         {
+            if (_conn != null) return;
+
             _conn = new WebSocket("");
             _conn.Opened += websocket_Opened;
             _conn.Error += ConnError;
@@ -74,9 +103,14 @@ namespace PhoenixSocket
             
             while (true)
             {
-                await Task.Delay(5000);
+                Thread.Sleep(5000);
                 _conn.Send("{ \"topic\":\"phoenix\",\"event\":\"heartbeat\",\"payload\":{ },\"ref\":\"" + _ref++ + "\"}");
             }
+        }
+
+        public void Disconnect(Action callback)
+        {
+            
         }
 
         private void ConnMessageReceived(object sender, MessageReceivedEventArgs e)
